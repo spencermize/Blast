@@ -33,6 +33,8 @@ var bombs;
 var gameOver;
 var score = 0;
 var scoreText;
+const spriteWidth = 13;
+const spriteHeight = 21;
 
 var game = new Phaser.Game(config);
 
@@ -46,16 +48,6 @@ function preload() {
 }
 
 function create() {
-    const spriteWidth = 13;
-    logo = this.add.image(400, 300, 'logo');
-
-    var tween = this.tweens.add({
-        targets: logo,
-        alpha: 0,
-        ease: 'Power1',
-        duration: 1000,
-        delay: 1000
-    });
     this.add.image(400, 300, 'sky');
 
     platforms = this.physics.add.staticGroup();
@@ -80,8 +72,10 @@ function create() {
 
     this.anims.create({
         key: 'turn',
-        frames: [{ key: 'dude', frame: 4 }],
-        frameRate: 20
+        frames: this.anims.generateFrameNumbers('dude', { start: 13 * spriteWidth, end: 13 * spriteWidth + 5 }),
+        yoyo: true,
+        frameRate: 10,
+        repeat: -1
     });
 
     this.anims.create({
@@ -107,16 +101,23 @@ function create() {
 
     bombs = this.physics.add.group();
 
-    scoreText = this.add.text(16, 16, 'score: 0', { fontSize: '32px', fill: '#000' });
+    scoreText = this.add.text(16, 16, 'Score: 0', { fontSize: '32px', fill: '#000' });
 
     this.physics.add.collider(player, platforms);
     this.physics.add.collider(stars, platforms);
     this.physics.add.collider(bombs, platforms);
-
-    this.physics.add.overlap(player, stars, collectStar, null, this);
-
     this.physics.add.collider(player, bombs, hitBomb, null, this);
 
+    this.physics.add.overlap(player, stars, collectStar, null, this);
+  
+    logo = this.add.image(400, 300, 'logo');
+    var tween = this.tweens.add({
+        targets: logo,
+        alpha: 0,
+        ease: 'Power1',
+        duration: 1000,
+        delay: 1000
+    });
 }
 function update() {
     if (gameOver) {
@@ -135,8 +136,9 @@ function update() {
     }
     else {
         player.setVelocityX(0);
-
-        player.anims.play('turn');
+        if(player.anims.getCurrentKey() !== 'turn'){
+            player.anims.play('turn');
+        }     
     }
 
     if (cursors.up.isDown && player.body.touching.down) {
