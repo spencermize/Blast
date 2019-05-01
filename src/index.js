@@ -5,6 +5,7 @@ import skyImg from "./assets/background.png";
 import groundImg from "./assets/platform.png";
 import starImg from "./assets/star.png";
 import bombImg from "./assets/bomb.png";
+import tridentImg from "./assets/trident.png";
 
 var config = {
     type: Phaser.AUTO,
@@ -30,9 +31,11 @@ var stars;
 var platforms;
 var cursors;
 var bombs;
+var tridents;
 var gameOver;
 var score = 0;
 var scoreText;
+var maxTridents = 3;
 const spriteWidth = 13;
 const spriteHeight = 21;
 
@@ -44,6 +47,7 @@ function preload() {
     this.load.image('ground', groundImg);
     this.load.image('star', starImg);
     this.load.image('bomb', bombImg);
+    this.load.image('trident', tridentImg);
     this.load.spritesheet('dude', dudeImg, { frameWidth: 64, frameHeight: 64 });
 }
 
@@ -100,24 +104,28 @@ function create() {
     });
 
     bombs = this.physics.add.group();
+    tridents = this.physics.add.group();
 
     scoreText = this.add.text(16, 16, 'Score: 0', { fontSize: '32px', fill: '#000' });
 
     this.physics.add.collider(player, platforms);
     this.physics.add.collider(stars, platforms);
     this.physics.add.collider(bombs, platforms);
+    this.physics.add.collider(tridents, platforms);
+    this.physics.add.collider(tridents, bombs, destroyBomb, null, this);
     this.physics.add.collider(player, bombs, hitBomb, null, this);
-
+    
+    this.physics.add.overlap(player, tridents, collectTrident, null, this);
     this.physics.add.overlap(player, stars, collectStar, null, this);
   
-    logo = this.add.image(400, 300, 'logo');
-    var tween = this.tweens.add({
-        targets: logo,
-        alpha: 0,
-        ease: 'Power1',
-        duration: 1000,
-        delay: 1000
-    });
+    // logo = this.add.image(400, 300, 'logo');
+    // var tween = this.tweens.add({
+    //     targets: logo,
+    //     alpha: 0,
+    //     ease: 'Power1',
+    //     duration: 1000,
+    //     delay: 1000
+    // });
 }
 function update() {
     if (gameOver) {
@@ -139,6 +147,25 @@ function update() {
         if(player.anims.getCurrentKey() !== 'turn'){
             player.anims.play('turn');
         }     
+    }
+
+    if(this.input.keyboard.checkDown(cursors.space, 250)){
+        if(tridents.children.entries.length < maxTridents){
+            var trident = tridents.create(player.x, player.y, 'trident');
+            trident.setCollideWorldBounds(true);
+            trident.setDrag(500, 0);
+            setTimeout(function(){
+                trident.isCollectible = true;
+            },2000);
+            if(cursors.right.isDown){
+                trident.setVelocityX(800);
+                trident.angle = 180;
+            }else{
+                trident.setVelocityX(-800);
+            }
+
+        }
+
     }
 
     if (cursors.up.isDown && player.body.touching.down) {
@@ -171,6 +198,12 @@ function collectStar(player, star) {
     }
 }
 
+function collectTrident(player, trident) {
+    if(!trident.body.isMoving && trident.isCollectible){
+        trident.destroy();  
+    }
+     
+ }
 function hitBomb(player, bomb) {
     this.physics.pause();
 
@@ -179,4 +212,9 @@ function hitBomb(player, bomb) {
     player.anims.play('turn');
 
     gameOver = true;
+}
+
+function destroyBomb(trident, bomb){
+    bomb.destroy();
+    trident.destroy();
 }
