@@ -29,6 +29,7 @@ var config = {
 };
 
 var logo;
+var scene;
 var player;
 var stars;
 var platforms;
@@ -62,6 +63,7 @@ function preload() {
 }
 
 function create() {
+    scene = this;
     this.add.image(400, 300, 'sky');
 
     platforms = this.physics.add.staticGroup();
@@ -164,41 +166,25 @@ function update() {
             dropBombs(20);
         }
         if (cursors.left.isDown) {
-            player.setVelocityX(-220);
-    
-            player.anims.play('left', true);
+            goLeft();
         }
         else if (cursors.right.isDown) {
-            player.setVelocityX(220);
-    
-            player.anims.play('right', true);
+            goRight();
         }
         else {
-            player.setVelocityX(0);
-            if(player.anims.getCurrentKey() !== 'turn'){
-                player.anims.play('turn');
-            }     
+            chill();
         }
     
         if(this.input.keyboard.checkDown(cursors.space, 250)){
-            if(tridents.children.entries.length < maxTridents){
-                var trident = tridents.create(player.x, player.y, 'trident');
-                trident.setCollideWorldBounds(true);
-                trident.setDrag(600, 0);
-                this.time.delayedCall(500,function(){
-                    trident.isCollectible = true;
-                })
-                if(cursors.right.isDown){
-                    trident.setVelocityX(800);
-                    trident.angle = 180;
-                }else{
-                    trident.setVelocityX(-800);
-                }
+            if(cursors.right.isDown){
+                shootRight();
+            }else{
+                shootLeft();
             }
         }
     
         if (cursors.up.isDown && player.body.touching.down) {
-            player.setVelocityY(-400);
+            jump();
         }
     }
 }
@@ -216,6 +202,46 @@ function rgbToHex(rgb) {
     return str;
 };
 
+function shootRight(){
+    shoot(800,180);
+}
+
+function shootLeft(){
+    shoot(-800,0);
+}
+
+function shoot(vel,angle){
+    if(tridents.children.entries.length < maxTridents){
+        var trident = tridents.create(player.x, player.y, 'trident');
+        trident.setCollideWorldBounds(true);
+        trident.setDrag(600, 0);
+        scene.time.delayedCall(500,function(){
+            trident.isCollectible = true;
+        })
+        trident.setVelocityX(vel);
+        trident.angle = angle;
+    }        
+}
+function goRight(){
+    player.setVelocityX(220);
+    player.anims.play('right', true);
+}
+
+function goLeft(){
+    player.setVelocityX(-220);
+    player.anims.play('left', true);
+}
+
+function jump(){
+    player.setVelocityY(-400);
+}
+
+function chill(){
+    player.setVelocityX(0);
+    if(player.anims.getCurrentKey() !== 'turn'){
+        player.anims.play('turn');
+    } 
+}
 function collectStar(player, star) {
     star.disableBody(true, true);
     addScore(10);
