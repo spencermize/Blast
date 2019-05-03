@@ -6,7 +6,7 @@
   "scripts": {
     "build": "webpack --config webpack/prod.js ",
     "start": "node app.js",
-	"watch":"webpack-dev-server --config webpack/base.js --open"
+    "watch": "webpack-dev-server --config webpack/base.js --open"
   },
   "repository": {
     "type": "git",
@@ -34,6 +34,7 @@
     "webpack-merge": "^4.2.1"
   },
   "dependencies": {
+    "@tensorflow/tfjs": "^1.1.2",
     "express": "^4.16.4",
     "phaser": "^3.16.2"
   }
