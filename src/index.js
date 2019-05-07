@@ -17,16 +17,27 @@ var tridents;
 var gameOver;
 var score = 0;
 var scoreText;
+var timeText;
 var maxTridents = 3;
+var deathTime = 2500;
+var width = 800;
+var height = 600;
+var frameWidth = 64;
+var lastRun;
 var level = 1;
 var levelText;
 var highScoreText;
+var generationText;
+var minX = -220;
+var maxX = 220;
+var generation = 1;
 var localStore = 'blast';
-var highScore = localStorage.getItem(localStore) == null ? 0 : localStorage.getItem(localStore);
+//var highScore = localStorage.getItem(localStore) == null ? 0 : localStorage.getItem(localStore);
+var highScore = 0;
 const spriteWidth = 13;
 const spriteHeight = 21;
 
-var build = function(){
+var build = function(bombsEnabled){
     var config = {
         type: Phaser.AUTO,
         physics: {
@@ -43,8 +54,8 @@ var build = function(){
         },
         scale: {
             mode: Phaser.Scale.FIT,
-            width: 800,
-            height: 600
+            width,
+            height
         }
     };
 
@@ -76,12 +87,15 @@ var build = function(){
     }
      
     game.dropBombs = function(qty) {
-        for (var i = 1; i < qty; i++) {
-            var bomb = bombs.create(Phaser.Math.Between(0, 800), 16, 'bomb');
-            bomb.setBounce(1);
-            bomb.setCollideWorldBounds(true);
-            bomb.setVelocity(Phaser.Math.Between(-200, 200), 20);
+        if(bombsEnabled){
+            for (var i = 1; i < qty; i++) {
+                var bomb = bombs.create(Phaser.Math.Between(0, 800), 16, 'bomb');
+                bomb.setBounce(1);
+                bomb.setCollideWorldBounds(true);
+                bomb.setVelocity(Phaser.Math.Between(-200, 200), 20);
+            }
         }
+
     }    
     game.addScore = function(num) {
         score += num;
@@ -91,6 +105,7 @@ var build = function(){
     game.collectStar = function(player, star) {
         star.disableBody(true, true);
         game.addScore(10);
+        deathTime += 500;
     
         if (stars.countActive(true) === 0) {
             //  A new batch of stars to collect
@@ -129,14 +144,19 @@ var build = function(){
         highScore = Math.max(score, highScore);
         localStorage.setItem(localStore, highScore);
         highScoreText.setText(`High: ${highScore}`);
-    }     
+    }
+    
+    game.landed = function(){
+        player.isJumping = 0;
+    }
+
     function preload() {
         this.load.image('sky', skyImg);
         this.load.image('ground', groundImg);
         this.load.image('star', starImg);
         this.load.image('bomb', bombImg);
         this.load.image('trident', tridentImg);
-        this.load.spritesheet('dude', dudeImg, { frameWidth: 64, frameHeight: 64 });
+        this.load.spritesheet('dude', dudeImg, { frameWidth, frameHeight: 64 });
 
         cursors = this.input.keyboard.createCursorKeys();
     }
@@ -150,12 +170,13 @@ var build = function(){
 
         for (var i = 0; i < 3; i++) {
 
-            platforms.create(Phaser.Math.Between(400, 550), 400, 'ground');
-            platforms.create(Phaser.Math.Between(0, 200), 250, 'ground');
-            platforms.create(Phaser.Math.Between(650, 800), 220, 'ground');
+           // platforms.create(Phaser.Math.Between(400, 550), 400, 'ground');
+            // platforms.create(Phaser.Math.Between(0, 200), 250, 'ground');
+            // platforms.create(Phaser.Math.Between(650, 800), 220, 'ground');
         }
 
-        player = this.physics.add.sprite(100, 450, 'dude');
+        player = this.physics.add.sprite(Phaser.Math.Between(0, 700), 450, 'dude');
+        player.isJumping = 0;
         this.anims.create({
             key: 'left',
             frames: this.anims.generateFrameNumbers('dude', { start: 9 * spriteWidth, end: 9 * spriteWidth + 8 }),
@@ -191,11 +212,11 @@ var build = function(){
         stars = this.physics.add.group({
             key: 'star',
             repeat: 11,
-            setXY: { x: 12, y: 0, stepX: 70 }
+            setXY: { x: 12, y: 500, stepX: 70 }
         });
 
         stars.children.iterate(function (child) {
-            child.setBounceY(Phaser.Math.FloatBetween(0.4, 0.8));
+           // child.setBounceY(Phaser.Math.FloatBetween(0.4, 0.8));
         });
 
         bombs = this.physics.add.group();
@@ -204,8 +225,10 @@ var build = function(){
         scoreText = this.add.text(16, 16, 'Score: 0', { fontSize: '32px', fill: '#000' });
         highScoreText = this.add.text(325, 16, `High: ${highScore}`, { fontSize: '32px', fill: '#000' });
         levelText = this.add.text(600, 16, 'Level: 1', { fontSize: '32px', fill: '#000' });
+        timeText = this.add.text(550, 550, 'Time: 10', { fontSize: '32px', fill: '#000' });
+        generationText = this.add.text(16, 550, `Generation: ${generation}`, { fontSize: '32px', fill: '#000' });
 
-        this.physics.add.collider(player, platforms);
+        this.physics.add.collider(player, platforms, game.landed, null, this);
         this.physics.add.collider(stars, platforms);
         this.physics.add.collider(bombs, platforms);
         this.physics.add.collider(tridents, platforms);
@@ -220,18 +243,17 @@ var build = function(){
         document.dispatchEvent(new Event('gamestart'));
 
         game.dropBombs(5);
+        lastRun = Date.now();
     }
     function update() {
-        if (gameOver) {
-            game.updateHighScore();
-            var rand = Phaser.Display.Color.RandomRGB();
-            player.setTint(rgbToHex([rand.r, rand.g, rand.b]));
-
-            scene.time.delayedCall(1000, function () {
-                gameOver = false;
-                this.scene.restart();
-            },[],this);
+        game.updateHighScore();
+        deathTime = deathTime - (Date.now() - lastRun);
+        if (gameOver || deathTime <= 0) {
+            deadEvent();
         } else {
+            lastRun = Date.now();
+            timeText.setText(`Time: ${deathTime / 1000}`);            
+            document.dispatchEvent(new Event('playing'));
             if (cursors.down.isDown && this.input.keyboard.checkDown(this.qKey, 250)) {
                 game.dropBombs(20);
             }
@@ -253,7 +275,7 @@ var build = function(){
                 }
             }
 
-            if (cursors.up.isDown && player.body.touching.down) {
+            if (cursors.up.isDown) {
                 Blast.jump();
             }
         }
@@ -271,7 +293,24 @@ function rgbToHex(rgb) {
 
     return str;
 }
+var deadEvent = _.throttle(dead,1000,{'trailing': false, 'leading': true});
 
+function dead(){
+    // scene.time.delayedCall(1000, function () {
+        // var rand = Phaser.Display.Color.RandomRGB();
+        // player.setTint(rgbToHex([rand.r, rand.g, rand.b]));   
+        
+        timeText.setText(`Time: 0.000`);                     
+        generation++;
+        generationText.setText(`Generation: ${generation}`);
+        gameOver = false;
+        deathTime = 2500;
+        level = 1;
+        score = 0;
+        document.dispatchEvent(new Event('died'));
+        scene.scene.restart();
+    // },[],this);
+}
 var Blast = {
     build,
     shootRight: function() {
@@ -281,23 +320,50 @@ var Blast = {
         game.shoot(-800, 0);
     },
     goRight: function() {
-        player.setVelocityX(220);
-        player.anims.play('right', true);
+        player.anims.play('right', true);        
+        player.setVelocityX(maxX);
     },
     goLeft: function() {
-        player.setVelocityX(-220);
         player.anims.play('left', true);
+        player.setVelocityX(minX);        
     },    
     jump: function() {
-        player.setVelocityY(-400);
+        if(player.body.touching.down){
+            player.isJumping = 1;
+            player.setVelocityY(-400);
+        }
     },
     chill: function() {
-        player.setVelocityX(0);
         if (player.anims.getCurrentKey() !== 'turn') {
             player.anims.play('turn');
         }
-    }   
+        player.setVelocityX(0);        
+    },
+    getState: function(){
+        var starRight = 0;
+        var starLeft = 0;
+        stars.children.iterate(function (child) {
+            if(child.active && _.inRange(child.body.bottom, player.body.bottom-10,player.body.bottom+10)){
+                if(child.body.position.x < player.body.position.x){
+                    starLeft++;
+                }else {
+                    starRight++;
+                }
+            }
+         });
+
+        return {
+            velocity: (player.body.velocity.x - minX) / (maxX - minX),
+            isJumping: player.isJumping,
+            ammo: tridents.children.entries.length / maxTridents,
+            right: player.body.blocked.right ? 1: 0,
+            left: player.body.blocked.left ? 1: 0,
+            starRight,
+            starLeft,
+            score,
+            highScore
+        }
+    }
 }
 
-Blast.build();
 export { Blast };

@@ -36,6 +36,7 @@
   "dependencies": {
     "@tensorflow/tfjs": "^1.1.2",
     "express": "^4.16.4",
+    "lodash": "^4.17.11",
     "phaser": "^3.16.2"
   }
 }
